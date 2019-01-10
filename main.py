@@ -75,7 +75,7 @@ def PatchMatch(img, mask, level, prev_match, max_level):
             if newdis[idx] < value[i]:
                 value[i] = newdis[idx]
                 match[x, y] = u[idx]
-                # tar[x][y] = img[u[j][0]][u[j][1]]
+                tar[x][y] = img[u[j][0]][u[j][1]]
     if level == max_level:
         print('time: {}'.format(time.time() - start))
         tar = tar.astype(np.uint8)
