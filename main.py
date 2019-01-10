@@ -20,6 +20,7 @@ def getdis(A, B, p, q):
     dis = abs(A[p[0]:p[0] + patch_len, p[1]:p[1] + patch_len] - B[q[0]:q[0] + patch_len, q[1]:q[1] + patch_len]).sum()
     return dis
 
+
 def PatchMatch(img, mask, level, prev_match, max_level):
     global start
     cor = []
@@ -46,8 +47,7 @@ def PatchMatch(img, mask, level, prev_match, max_level):
         x, y = cor[i]
         value[i] = getdis(img, tar, match[x, y], cor[i])
         tar[x][y] = img[match[x][y][0]][match[x][y][1]]
-    cnt = np.zeros_like(mask)
-    for epoch in range(5):
+    for epoch in range(10):
         order = order[::-1]
         for i in order:
             x, y = cor[i]
@@ -58,8 +58,6 @@ def PatchMatch(img, mask, level, prev_match, max_level):
                         value[i] = newdis
                         match[x, y] = match[x + movex[d], y + movey[d]]
                         tar[x][y] = img[match[x][y][0]][match[x][y][1]]
-            R = max(w, h)
-            v0 = match[x, y]
             R = max(w, h)
             v0 = match[x, y].copy()
             l_dx, r_dx = -v0[0], w - patch_len - v0[0]
@@ -78,6 +76,15 @@ def PatchMatch(img, mask, level, prev_match, max_level):
                 tar[x][y] = img[u[j][0]][u[j][1]]
     if level == max_level:
         print('time: {}'.format(time.time() - start))
+        tar = img * ((mask == 0)[:, :, None])
+        tar = tar.astype(np.float)
+        for i in range(n):
+            x, y = cor[i]
+            cnt = 0
+            for dx in range(-1, 1):
+                for dy in range(-1, 1):
+                    qx, qy = match[x - dx][y - dy]
+                    tar[x][y] = (tar[x][y] * cnt + img[qx + dx][qy + dy]) / (cnt + 1)
         tar = tar.astype(np.uint8)
         cv2.imshow("result.png", tar)
         cv2.waitKey()
