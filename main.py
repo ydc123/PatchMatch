@@ -32,8 +32,6 @@ while True:
     if k == 27:
         break
 cv2.destroyWindow('draw')
-cv2.imwrite('mask.png', mask)
-mask = cv2.imread('mask.png', 0)
 img = cv2.imread('test.png')
 img = img.astype(np.int)
 cor = []
