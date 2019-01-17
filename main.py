@@ -5,7 +5,7 @@ import time
 
 img = cv2.imread('test.png')
 mask = np.zeros(img.shape[:2], dtype=np.uint8)
-patch_len = 5
+patch_len = 3
 
 
 def draw(event, x, y, flags, param):
@@ -54,13 +54,11 @@ def PatchMatch(img, mask, level, prev_match, max_level):
             for d in range(4):
                 if epoch % 2 == d % 2:
                     qx, qy = match[x + movex[d], y + movey[d]]
-                    qx, qy = qx - movex[d], qy - movey[d]
-                    if qx >= 0 and qx + patch_len < w and qy >= 0 and qy + patch_len < h and mask[qx][qy] == 0:
-                        newdis = getdis(img, tar, (qx, qy), cor[i])
-                        if newdis < value[i]:
-                            value[i] = newdis
-                            match[x, y] = np.array([qx, qy])
-                            tar[x][y] = img[match[x][y][0]][match[x][y][1]]
+                    newdis = getdis(img, tar, (qx, qy), cor[i])
+                    if newdis < value[i]:
+                        value[i] = newdis
+                        match[x, y] = np.array([qx, qy])
+                        tar[x][y] = img[match[x][y][0]][match[x][y][1]]
             R = max(w, h)
             v0 = match[x, y].copy()
             l_dx, r_dx = -v0[0], w - patch_len - v0[0]
@@ -106,6 +104,9 @@ cv2.imwrite('mask.png', mask)
 start = time.time()
 mask = cv2.imread('mask.png', 0)
 img = cv2.imread('test.png')
+tmp = img.copy()
+tmp[mask > 0] = 255
+cv2.imshow("tmp.png", tmp)
 imgs = [img.astype(np.int)]
 masks = [mask]
 while img.shape[0] > 10 * patch_len and img.shape[1] > 10 * patch_len:
