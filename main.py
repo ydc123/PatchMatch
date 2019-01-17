@@ -53,11 +53,14 @@ def PatchMatch(img, mask, level, prev_match, max_level):
             x, y = cor[i]
             for d in range(4):
                 if epoch % 2 == d % 2:
-                    newdis = getdis(img, tar, match[x + movex[d], y + movey[d]], cor[i])
-                    if newdis < value[i]:
-                        value[i] = newdis
-                        match[x, y] = match[x + movex[d], y + movey[d]]
-                        tar[x][y] = img[match[x][y][0]][match[x][y][1]]
+                    qx, qy = match[x + movex[d], y + movey[d]]
+                    qx, qy = qx - movex[d], qy - movey[d]
+                    if qx >= 0 and qx + patch_len < w and qy >= 0 and qy + patch_len < h and mask[qx][qy] == 0:
+                        newdis = getdis(img, tar, (qx, qy), cor[i])
+                        if newdis < value[i]:
+                            value[i] = newdis
+                            match[x, y] = np.array([qx, qy])
+                            tar[x][y] = img[match[x][y][0]][match[x][y][1]]
             R = max(w, h)
             v0 = match[x, y].copy()
             l_dx, r_dx = -v0[0], w - patch_len - v0[0]
@@ -74,20 +77,20 @@ def PatchMatch(img, mask, level, prev_match, max_level):
                 value[i] = newdis[idx]
                 match[x, y] = u[idx]
                 tar[x][y] = img[u[j][0]][u[j][1]]
-    if level == max_level:
-        print('time: {}'.format(time.time() - start))
-        tar = img * ((mask == 0)[:, :, None])
-        tar = tar.astype(np.float)
-        for i in range(n):
-            x, y = cor[i]
-            cnt = 0
-            for dx in range(-1, 1):
-                for dy in range(-1, 1):
-                    qx, qy = match[x - dx][y - dy]
-                    tar[x][y] = (tar[x][y] * cnt + img[qx + dx][qy + dy]) / (cnt + 1)
-        tar = tar.astype(np.uint8)
-        cv2.imshow("result.png", tar)
-        cv2.waitKey()
+    print('time: {}'.format(time.time() - start))
+    tar = img * ((mask == 0)[:, :, None])
+    tar = tar.astype(np.float)
+    tmp = tar.copy()
+    for i in range(n):
+        x, y = cor[i]
+        cnt = 0
+        for dx in range(-1, 2):
+            for dy in range(-1, 2):
+                qx, qy = match[x - dx][y - dy]
+                tmp[x][y] = (tmp[x][y] * cnt + img[qx + dx][qy + dy]) / (cnt + 1)
+    tmp = tmp.astype(np.uint8)
+    cv2.imshow("result.png", tmp)
+    cv2.waitKey()
     return match
 
 
@@ -98,10 +101,10 @@ while True:
     k = cv2.waitKey(1) & 0xFF
     if k == 27:
         break
+cv2.destroyWindow('draw')
 cv2.imwrite('mask.png', mask)
 start = time.time()
 mask = cv2.imread('mask.png', 0)
-cv2.destroyWindow('draw')
 img = cv2.imread('test.png')
 imgs = [img.astype(np.int)]
 masks = [mask]
