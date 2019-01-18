@@ -3,7 +3,8 @@ import numpy as np
 import random
 import time
 
-img = cv2.imread('test.png')
+filename = 'test.png'
+img = cv2.imread(filename)
 mask = np.zeros(img.shape[:2], dtype=np.uint8)
 patch_len = 3
 
@@ -27,12 +28,17 @@ def PatchMatch(img, mask, level, prev_match, max_level):
     w, h = mask.shape
     tar = img * ((mask == 0)[:, :, None])
     match = np.zeros((w, h, 2), dtype=np.int)
+    movex = [0, -1, 1, 0]
+    movey = [1, 0, 0, -1]
     for i in range(w - patch_len):
         for j in range(h - patch_len):
             if mask[i][j] != 0:
                 cor.append([i, j])
                 if level == 0:
-                    match[i][j] = np.array([np.random.randint(0, w - patch_len), np.random.randint(0, h - patch_len)])
+                    x, y = np.array([np.random.randint(0, w - patch_len), np.random.randint(0, h - patch_len)])
+                    while mask[x][y] > 0:
+                        x, y = np.array([np.random.randint(0, w - patch_len), np.random.randint(0, h - patch_len)])
+                    match[i][j] = np.array([x, y])
                 else:
                     match[i][j] = np.array([prev_match[i // 2][j // 2]]) * 2
             else:
@@ -40,14 +46,14 @@ def PatchMatch(img, mask, level, prev_match, max_level):
     cor = np.array(cor)
     n = len(cor)
     value = np.zeros(n, dtype=np.int)
-    movex = [0, -1, 1, 0]
-    movey = [1, 0, 0, -1]
     order = range(n)
     for i in order:
         x, y = cor[i]
         value[i] = getdis(img, tar, match[x, y], cor[i])
         tar[x][y] = img[match[x][y][0]][match[x][y][1]]
     for epoch in range(10):
+        # if level == max_level:
+        #     break
         order = order[::-1]
         for i in order:
             x, y = cor[i]
@@ -61,20 +67,16 @@ def PatchMatch(img, mask, level, prev_match, max_level):
                         tar[x][y] = img[match[x][y][0]][match[x][y][1]]
             R = max(w, h)
             v0 = match[x, y].copy()
-            l_dx, r_dx = -v0[0], w - patch_len - v0[0]
-            l_dy, r_dy = -v0[1], h - patch_len - v0[1]
-            log2R = int(np.log2(R))
-            dx = np.random.randint(l_dx, r_dx, log2R)
-            dy = np.random.randint(l_dy, r_dy, log2R)
-            u = v0 + np.array([dx, dy]).T
-            newdis = np.zeros(log2R)
-            for j in range(log2R):
-                newdis[j] = getdis(img, tar, u[j], cor[i])
-            idx = np.argmin(newdis)
-            if newdis[idx] < value[i]:
-                value[i] = newdis[idx]
-                match[x, y] = u[idx]
-                tar[x][y] = img[u[j][0]][u[j][1]]
+            while R >= 1:
+                R /= 2.0
+                r = int(R)
+                u = v0 + np.random.randint(-r, r + 1, 2)
+                while u[0] < 0 or u[1] < 0 or u[0] + patch_len >= w or u[1] + patch_len >= h or mask[u[0]][u[1]] > 0:
+                    u = v0 + np.random.randint(-r, r + 1, 2)
+                newdis = getdis(img, tar, u, cor[i])
+                if newdis < value[i]:
+                    value[i] = newdis
+                    match[x, y] = u
     print('time: {}'.format(time.time() - start))
     tar = img * ((mask == 0)[:, :, None])
     tar = tar.astype(np.float)
@@ -86,6 +88,7 @@ def PatchMatch(img, mask, level, prev_match, max_level):
             for dy in range(-1, 2):
                 qx, qy = match[x - dx][y - dy]
                 tmp[x][y] = (tmp[x][y] * cnt + img[qx + dx][qy + dy]) / (cnt + 1)
+                cnt = cnt + 1
     tmp = tmp.astype(np.uint8)
     cv2.imshow("result.png", tmp)
     cv2.waitKey()
@@ -103,10 +106,7 @@ cv2.destroyWindow('draw')
 cv2.imwrite('mask.png', mask)
 start = time.time()
 mask = cv2.imread('mask.png', 0)
-img = cv2.imread('test.png')
-tmp = img.copy()
-tmp[mask > 0] = 255
-cv2.imshow("tmp.png", tmp)
+img = cv2.imread(filename)
 imgs = [img.astype(np.int)]
 masks = [mask]
 while img.shape[0] > 10 * patch_len and img.shape[1] > 10 * patch_len:
